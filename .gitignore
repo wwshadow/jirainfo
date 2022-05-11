@@ -1,5 +1,5 @@
 # created by virtualenv automatically
 #*
-/opt/jira/jirainfo/jiracse/config.yaml
+/jirainfo/jiracse/config.yaml
 test.py
-/opt/jira/jirainfo/jiracse/tempo.py
+/jirainfo/jiracse/tempo.py
