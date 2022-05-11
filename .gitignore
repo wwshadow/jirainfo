@@ -1,6 +1,0 @@
-# created by virtualenv automatically
-#*
-.gitignore
-jiracse/config.yaml
-test.py
-jiracse/tempo.py
