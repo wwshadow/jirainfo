@@ -1,0 +1,12 @@
+jira:
+  url: 'https://easystack.atlassian.net/'
+  name: 'wenwei.hao@easystack.cn'
+  email: 'wenwei.hao@easystack.cn'
+  jiarkey: 'JIDgL6gKisxURPPKVwnh9A1C'
+  jiraid: ''
+mysql:
+  name: 'jirainfo'
+  host: '8.142.68.151'
+  port: '53306'
+  user: 'jirainfo'
+  password: 'jirainfo.123'
