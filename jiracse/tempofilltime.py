@@ -140,7 +140,7 @@ def FillTime(Authorization,tompetime,esdeskid,workerId, is_autofill=False):
 
 if __name__ == '__main__':
     tompetime = '70'
-    esdeskid = ''
+    esdeskid = 'ECSDESK-19162'
     workerId = ''
     Authorization = "xxx"
     is_autofill = True
