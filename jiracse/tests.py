@@ -26,8 +26,8 @@ def jirasql(sqlstr):
     # maxResults=xx最大 也只有100  需要取消该值验证
     jira = jiralogin()
     jirasqlresult = jira.search_issues(sqlstr, maxResults=False)
-
-    print(jirasqlresult)
+    return jirasqlresult
+    # print(jirasqlresult)
 
 def dicsum():
     d={

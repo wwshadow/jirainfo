@@ -1,21 +1,18 @@
 import datetime
 import json
 import os
-
-from django.shortcuts import render
 # Create your views here.
-from django.http import HttpResponse, JsonResponse
 from jira import JIRA
 from rest_framework import serializers
 from rest_framework.response import Response
 import yaml
 import sys
 from rest_framework.views import APIView
-
 sys.setrecursionlimit(9000000)
 import requests
 requests.packages.urllib3.disable_warnings()
-
+from  .models import TbCse,TbEsdesk
+from django.core import serializers
 
 
 class CseInfo:
@@ -38,13 +35,13 @@ class CseInfo:
         filepath = os.path.join(module_dir, 'config.yaml')
         jirafile = CseInfo.readconfig(filepath)
         options = {
-            'server': jirafile['url'],
+            'server': jirafile['jira']['url'],
             'verify': False
         }
-        jira = JIRA(options, basic_auth=(jirafile['name'], jirafile['jiarkey']))
+        jira = JIRA(options, basic_auth=(jirafile['jira']['name'], jirafile['jira']['jiarkey']))
         return jira
     @classmethod
-    def jirasql(self,sqlstr):
+    def jirasql(cls,sqlstr):
         """
         jira sql 查询
         :return: 返回jira sq了查询下结果
@@ -58,8 +55,8 @@ class CseInfo:
         return jirasqlresult
 
 
-cseinfo = CseInfo()
-def cseresult(self,csekey):
+cseinfoinit = CseInfo()
+def cseresult(csekey):
     """
     根据sql 结果返回基础信息
     :return: 返回的是与当前cse key 相关的子case 信息
@@ -68,19 +65,19 @@ def cseresult(self,csekey):
                 项目名称：
                 维保：
     """
-    jira = CseInfo.jiralogin()
+    jira = cseinfoinit.jiralogin()
     cseinfo = jira.issue(csekey)
     cse = {
-        'projectname':cseinfo.fields.customfield_11190,
-        'customername':''.join(cseinfo.fields.customfield_11191),
-        'fullname':cseinfo.fields.summary,
-        'describe':cseinfo.fields.description,
+        'projectname': cseinfo.fields.customfield_11190,
+        'customername': ''.join(cseinfo.fields.customfield_11191),
+        'fullname': cseinfo.fields.summary,
+        'describe': cseinfo.fields.description,
     }
     return cse
 
 
 
-def csetyperesult(self,csekey):
+def csetyperesult(csekey):
     """
     :return:返回改cse 下case 的统计情况
     """
@@ -90,11 +87,11 @@ def csetyperesult(self,csekey):
     #这个地方还可以在优化，自动获取所有类型
     issuetype = ['Change', 'Incident', 'Problem', 'Service request']
     case_type_num = {}
-    jira_result = CseInfo.jirasql(self, csechildtypesql)
+    jira_result = cseinfoinit.jirasql(csechildtypesql)
     for i in range(0, 4):
         #这里多次查询数据库较为耗时
         epiclink_type_sql = '"Epic Link"  in (%s) AND issuetype = "%s"' % (csekey, issuetype[i])
-        lentype = len(CseInfo.jirasql(self, epiclink_type_sql))
+        lentype = len(cseinfoinit.jirasql(epiclink_type_sql))
         case_type_num[issuetype[i]] = lentype
     other_case_num = jira_result.total - sum(case_type_num.values())
     case_type_num['other'] = other_case_num
@@ -107,11 +104,11 @@ def csetyperesult(self,csekey):
 
     return datalist
 
-def usercaseresult(self,userid):
+def usercaseresult(userid):
     # if request.method =="GET":
-    userlistsql = 'assignee in (%s) AND issuetype in (Problem, Incident, "Service Request",Change) AND Created >= startOfMonth(0)' %userid
-    print(userlistsql)
-    jira_result = CseInfo.jirasql(self,userlistsql)
+    userlistsql = 'assignee in (%s) AND issuetype in (Problem, Incident, "Service Request",Change) AND Created >= startOfMonth(-1)' %userid
+    # print(userlistsql)
+    jira_result = cseinfoinit.jirasql(userlistsql)
     data = []
     for i in range(len(jira_result)):
         resdata = {}
@@ -134,16 +131,16 @@ def updateusertimespent(self,esdeskid,timespent):
     :param timespent:
     :return: 暂时不行 jira 不支持直接更新这个字段
     """
-    jira = CseInfo.jiralogin(self)
+    jira = cseinfoinit.jiralogin(self)
     esdesk = jira.issue(esdeskid, fields='timespent,summary')
     print(esdesk.fields.timespent)
     esdesk.update(fields={'timespent': 10})
     print(esdesk.fields.timespent)
     return
 
-def csechildresult(self,csekey):
+def csechildresult(csekey):
     csechildsql = '"Epic Link"  in (%s)' % (csekey)
-    jira_result = CseInfo.jirasql(self, csechildsql)
+    jira_result = cseinfoinit.jirasql(csechildsql)
     data = []
     for i in range(len(jira_result)):
         resdata = {}
@@ -155,29 +152,71 @@ def csechildresult(self,csekey):
         data.append(resdata)
     return data
 
-def csetotle(self):
-    csetotalsql ='project in (CustomerEnvironment) AND issuetype  = Epic AND status != Done '
-    csetotalresult = CseInfo.jirasql(self, csetotalsql)
-    resultdata=[]
-    for i in csetotalresult:
-        data = {}
-        data['cseid'] = i.key
-        data['csename'] = i.fields.customfield_10008
-        data['csestatus'] = i.fields.status.name
-        data['customername'] = i.fields.customfield_11191
-        data['projectname'] = i.fields.customfield_11190
-        data['fullname'] = i.fields.summary
-        try:
-            data['version'] = i.fields.fixVersions[0].name
-        except :
-            print(i.key)
-        data['maintenancedate'] = i.fields.customfield_11221
-        data['environmenttype'] = i.fields.customfield_11220.value
-        resultdata.append(data)
-    return resultdata
 
-def csemonth(self, csekey):
-    data = csechildresult(self, csekey)
+def getcsetotals():
+    tbcse = TbCse.objects.all()
+    json_data = serializers.serialize('json', tbcse)
+    resdata = json.loads(json_data)
+    return resdata
+
+def updatecsetotals():
+    csetotalsql = 'project in (CustomerEnvironment) AND issuetype  = Epic AND status != Done '
+    csetotalresult = cseinfoinit.jirasql(csetotalsql)
+    resultdata = []
+    for i in csetotalresult:
+
+        try:
+            tbcseid = TbCse.objects.filter(cseid=str(i.key))
+            if tbcseid.first() is not None:
+                continue
+            else:
+                data = {}
+                data['cseid'] = i.key
+                data['csename'] = i.fields.customfield_10008
+                data['csestatus'] = i.fields.status.name
+                data['customername'] = i.fields.customfield_11191
+                data['projectname'] = i.fields.customfield_11190
+                data['fullname'] = i.fields.summary
+                try:
+                    data['version'] = i.fields.fixVersions[0].name
+                except:
+                    print(i.key)
+                data['maintenancedate'] = i.fields.customfield_11221
+                data['environmenttype'] = i.fields.customfield_11220.value
+                resultdata.append(data)
+                tbcse = TbCse(cseid=data['cseid'], csename=data['csename'], csestatus=data['csestatus'],
+                              customername=data['customername'],
+                              projectname=data['projectname'], fullname=data['fullname'],
+                              version=data['version'], maintenancedate=data['maintenancedate'],
+                              environmenttype=data['environmenttype'])
+                tbcse.save()
+        except:
+            data = {}
+            data['cseid'] = i.key
+            data['csename'] = i.fields.customfield_10008
+            data['csestatus'] = i.fields.status.name
+            data['customername'] = i.fields.customfield_11191
+            data['projectname'] = i.fields.customfield_11190
+            data['fullname'] = i.fields.summary
+            try:
+                data['version'] = i.fields.fixVersions[0].name
+            except:
+                print(i.key)
+            data['maintenancedate'] = i.fields.customfield_11221
+            data['environmenttype'] = i.fields.customfield_11220.value
+            resultdata.append(data)
+            tbcse = TbCse(cseid=data['cseid'], csename=data['csename'], csestatus=data['csestatus'],
+                          customername=data['customername'],
+                          projectname=data['projectname'], fullname=data['fullname'],
+                          version=data['version'], maintenancedate=data['maintenancedate'],
+                          environmenttype=data['environmenttype'])
+            tbcse.save()
+
+    result = 'ok'
+    return result
+
+def csemonth(csekey):
+    data = csechildresult(csekey)
     reyear=str(datetime.date.today().year)
     rdata=[0]*12
     # rdata = {"01": 0, "02": 0, "03": 0, "04": 0, "05": 0, "06": 0, "07": 0, "08": 0, "09": 0, "10": 0, "11": 0, "12": 0}
@@ -223,17 +262,27 @@ def csemonth(self, csekey):
 
     return rdata
 
-class CsetotalView(APIView):
+
+class GetCsetotalView(APIView):
     def get(self, equest):
         '''列表视图：查询基础信息'''
         # pks= request.query_params.get('csekey')
-        csetotal = csetotle(self)
+        csetotal = getcsetotals()
+
         return Response(csetotal)
+
+class UpdateCsetotalView(APIView):
+    def get(self, equest):
+        '''列表视图：查询基础信息'''
+        # pks= request.query_params.get('csekey')
+        csetotal = updatecsetotals()
+        return Response(csetotal)
+
 class CseDescribeView(APIView):
     def get(self,request):
         '''列表视图：查询基础信息'''
         pks= request.query_params.get('csekey')
-        cseinfo = cseresult(self,pks)
+        cseinfo = cseresult(pks)
         return Response(cseinfo)
         # serializer = BookModelSerializer(instance=book,many=True)
         # return Response(serializer.data)
@@ -241,14 +290,14 @@ class CseDescribeView(APIView):
 class CseTypeView(APIView):
     def get(self, request):
         csekey = request.query_params.get('csekey')
-        data = csetyperesult(self,csekey)
+        data = csetyperesult(csekey)
         return Response(data)
     def put(self,request):
         return Response()
 class CseChildView(APIView):
     def get(self, request):
         csekey = request.query_params.get('csekey')
-        data = csechildresult(self, csekey)
+        data = csechildresult(csekey)
         return Response(data)
     def put(self,request):
         return Response()
@@ -260,7 +309,7 @@ class CseMonthView(APIView):
         :return: 当年这个项目每月case量
         '''
         csekey = request.query_params.get('csekey')
-        data = csemonth(self, csekey)
+        data = csemonth(csekey)
         return Response(data)
     def put(self,request):
         return Response()
@@ -269,30 +318,35 @@ class CseMonthView(APIView):
 class UserCaseView(APIView):
     def get(self, request):
         userid = request.query_params.get('userid')
-        print(userid)
-        data = usercaseresult(self,userid)
+        data = usercaseresult(userid)
         return Response(data)
     def post(self,request):
         esdeskid = request.data.get('esdeskid')
         timespent = request.data.get('timespent')
         result = updateusertimespent(self,esdeskid,timespent)
         print(result)
-        return Response()
+        return Response(result)
 
 
+from .tempofilltime import FillTime
 
-# def testinfo(request):
-#     if request.mothod ==  'GET':
-#         data = {'data':'hello'}
-#         return Response(data)
-#     if request.mothod ==  'POST':
-#         para = request.data
-#         id = para['data']
-#         if id == 1:
-#             data = 'dogs'
-#         return Response({'data': data})
+class FilltempoView(APIView):
+    def get(self, request):
+        userid = request.query_params.get('userid')
+        print(userid)
+        data = usercaseresult(userid)
+        return Response(data)
+    def post(self,request):
+        ss = request.data
+        workerId = request.data.get('workerId'),
+        #用户id
+        esdeskid = request.data.get('esdeskid'),
+        Authorization = request.data.get('Authorization'),
+        #将填写得工时时间
+        tompetime = request.data.get('tompetime'),
+        #是否自动填写工时
+        is_autofill = request.data.get('is_autofill'),
+        result = FillTime(Authorization[0], tompetime[0], esdeskid, workerId[0], is_autofill[0])
+        return Response(result.reason)
 
-# if __name__ == '__main__':
-#      result = cseresult('ECSDESK-18971')
-#      print(result)
 

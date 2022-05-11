@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 import os
 from pathlib import Path
-
+import  yaml
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -98,10 +98,34 @@ WSGI_APPLICATION = 'jirainfo.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
+def readfile():
+    module_dir = os.path.dirname(__file__)
+    filepath = os.path.join('/opt/jira/jirainfo/jiracse/', 'config.yaml')
+    with open(filepath, 'r', encoding='utf-8') as f:
+        jiradata = yaml.load(f, Loader=yaml.FullLoader)
+        return jiradata
+mysqlfile = readfile()
+# print(mysqlfile['mysql']['name'])
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        # 'ENGINE': 'django.db.backends.sqlite3',
+        # 'NAME': BASE_DIR / 'db.sqlite3',
+        # 数据库引擎配置
+        'ENGINE': 'django.db.backends.mysql',
+        # 数据库的名字
+        'NAME': mysqlfile['mysql']['name'],
+        # 'NAME': 'jirainfo',
+        # 数据库服务器的IP地址（本机可以写localhost或127.0.0.1）
+        'HOST': mysqlfile['mysql']['host'],
+        # 启动MySQL服务的端口号
+        'PORT': mysqlfile['mysql']['port'],
+        # 数据库用户名和口令
+        'USER': mysqlfile['mysql']['user'],
+        'PASSWORD': mysqlfile['mysql']['password'],
+        # 数据库使用的字符集
+        'CHARSET': 'utf8',
+        # 数据库时间日期的时区设定
+        'TIME_ZONE': 'Asia/Chongqing',
     }
 }
 
@@ -129,13 +153,13 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_WHITELIST = ( 'http://127.0.0.1:8080','http://192.168.10.130:8080','http://localhost:8080')
 CORS_ALLOW_METHODS = (
-      'GET',
-        'DELETE',
-        'OPTIONS',
-        'PATCH',
-        'POST',
-        'PUT',
-        'VIEW',
+    'GET',
+    'DELETE',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+    'VIEW',
 
 )
 CORS_ALLOW_HEADERS = (

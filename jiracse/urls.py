@@ -11,7 +11,9 @@ urlpatterns = [
     path('cse/', views.CseDescribeView.as_view()),
     path('csetype/', views.CseTypeView.as_view()),
     path('csechild/', views.CseChildView.as_view()),
-    path('csetotal',views.CsetotalView.as_view()),
+    path('csetotal',views.UpdateCsetotalView.as_view()),
+    path('getcsetotal',views.GetCsetotalView.as_view()),
     path('csemonth/', views.CseMonthView.as_view()),
     path('usercase/', views.UserCaseView.as_view()),
+    path('filltompe/', views.FilltempoView.as_view()),
 ]

@@ -20,6 +20,20 @@
             <td>{{ dept.location }}</td>
         <tr>
         {% endfor %}
+
+
     </table>
+
+     <h1>cse info</h1>
+      <div>{{csekey}}</div>
 </body>
+<script src="/static/js/vue.js"></script>
+    var app = new Vue({
+      el: '#app',
+      data: {
+        csekey: 'Hello Vue!',
+        csenum:
+      }
+    })
+
 </html>
