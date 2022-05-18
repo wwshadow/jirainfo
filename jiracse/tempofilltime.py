@@ -6,40 +6,43 @@ import re
 
 import json
 import requests
-from jira import JIRA
-import jira.client
 import urllib3
 from .views import CseInfo
 urllib3.disable_warnings()
 import sys
 sys.setrecursionlimit(9000000)
 
-def FillTime(Authorization,tompetime,esdeskid,workerId, is_autofill=False):
+def FillTime(Authorization,tompetime='',esdeskid='',workerId='',filldatetime='', is_autofill=False):
     cseinfo = CseInfo()
+    jira = cseinfo.jiralogin()
     headers = {
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36',
         'Authorization': Authorization,
         'Content-Type': 'application/json'
     }
     if is_autofill:
+        hours = ''
         startofweek_jql = 'type in (Incident, Problem, "Service Request", Change, Task) ' \
                           'AND assignee = %s  AND createdDate >= startOfWeek(0) ' % workerId
 
-        sqls = cseinfo.search_issues(startofweek_jql, maxResults=False)
+        sqls = jira.search_issues(startofweek_jql, maxResults=False)
         for i in range(len(sqls)):
             # print(len(sqls))
+
             ECSDESK_infos = jira.issue(sqls[i].key)
             try:
                 infofields_time = ECSDESK_infos.fields.timespent
                 if infofields_time == None:
                     hours = 0
+                else:
+                    continue
             except:
                 # infofields_time = '0h'
                 hours = 0
             # global hours
             originTaskIDs = ECSDESK_infos.id
             createtime = (ECSDESK_infos.fields.created).split("+", 1)[0]
-            tempohour = [8, 8.5]
+            tempohour = [8]
             # 工时选择范围，单位小时
             secend = 3600
 
@@ -96,12 +99,15 @@ def FillTime(Authorization,tompetime,esdeskid,workerId, is_autofill=False):
                                 return result.text
                     if result.status_code == 401:
                         print("认证失效，重新获取")
-                        return result.text
+                        return result.status_code
                 except Exception as e:
                     return result.text
+        result = 'ok'
+        return result
     else:
         ECSDESK_infos = jira.issue(esdeskid)
-        createtime = (ECSDESK_infos.fields.created).split("+", 1)[0]
+        # createtime = (ECSDESK_infos.fields.created).split("+", 1)[0]
+        createtime = filldatetime
         originTaskIDs = ECSDESK_infos.id
         data = {
             'attributes': {},
@@ -122,14 +128,15 @@ def FillTime(Authorization,tompetime,esdeskid,workerId, is_autofill=False):
                                    data=json.dumps(data))
             if result.status_code == 200:
                 print("完成")
-                return result
+                print(result.text)
+                return result.status_code
 
             if result.status_code == 400:
                 print(result)
-                return result
+                return result.status_code
             if result.status_code == 401:
-                print(result,"认证失败")
-                return result
+                print(result, "认证失败")
+                return result.status_code
         except Exception as e:
             print(e)
 
@@ -140,9 +147,10 @@ def FillTime(Authorization,tompetime,esdeskid,workerId, is_autofill=False):
 
 if __name__ == '__main__':
     tompetime = '70'
-    esdeskid = ''
-    workerId = ''
+    esdeskid = 'ECSDESK-19381'
+    workerId = '5f812189287870006a5c85b4'
     Authorization = "xxx"
-    is_autofill = True
-    FillTime(Authorization,tompetime,esdeskid,workerId,is_autofill)
+    filldatatime = '2022-06-11'
+    is_autofill = False
+    FillTime(Authorization, tompetime, esdeskid, workerId, filldatatime, is_autofill)
 

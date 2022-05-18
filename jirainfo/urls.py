@@ -22,6 +22,6 @@ urlpatterns = [
     # path('/', TemplateView.as_view(template_name='index.html')),
     # path('admin/', admin.site.urls),
     # path('praise/', views.praise_or_criticize),
-    path('jirainfo/', include('jiracse.urls')),
+    path('jirainfo/v1/', include('jiracse.urls')),
 
 ]

@@ -121,22 +121,22 @@ def usercaseresult(userid):
         data.append(resdata)
     return data
 
-def updateusertimespent(self,esdeskid,timespent):
-    # esdeskid = data['esdeskid']
-    # timespent = data['timespent']
-    """
-
-    :param self:
-    :param esdeskid:
-    :param timespent:
-    :return: 暂时不行 jira 不支持直接更新这个字段
-    """
-    jira = cseinfoinit.jiralogin(self)
-    esdesk = jira.issue(esdeskid, fields='timespent,summary')
-    print(esdesk.fields.timespent)
-    esdesk.update(fields={'timespent': 10})
-    print(esdesk.fields.timespent)
-    return
+# def updateusertimespent(self,esdeskid,timespent):
+#     # esdeskid = data['esdeskid']
+#     # timespent = data['timespent']
+#     """
+#
+#     :param self:
+#     :param esdeskid:
+#     :param timespent:
+#     :return: 暂时不行 jira 不支持直接更新这个字段
+#     """
+#     jira = cseinfoinit.jiralogin()
+#     esdesk = jira.issue(esdeskid, fields='timespent,summary')
+#     print(esdesk.fields.timespent)
+#     esdesk.update(fields={'timespent': 10})
+#     print(esdesk.fields.timespent)
+#     return
 
 def csechildresult(csekey):
     csechildsql = '"Epic Link"  in (%s)' % (csekey)
@@ -145,13 +145,40 @@ def csechildresult(csekey):
     for i in range(len(jira_result)):
         resdata = {}
         resdata['esdeskname'] = jira_result[i].fields.summary
-        resdata['issueid']=jira_result[i].key
+        resdata['issueid'] = jira_result[i].key
         resdata['issuetype'] = jira_result[i].fields.issuetype.name
         resdata['issuestatus'] = jira_result[i].fields.status.name
         resdata['createdata'] = jira_result[i].fields.created.split('T')[0]
         data.append(resdata)
     return data
+def ecsbymonthresult():
+    """
 
+    :param :ecsid
+        :createdate
+        :describe 摘要
+        :creater 创建者
+        :version 版本
+        :status 状态
+        assignee 经办人
+priority: 优先级
+    :return:return ecs by this month
+    """
+    csechildsql = 'project in ("EasyStack Customer Support") AND createdDate  >= endOfMonth(-1)'
+    jira_result = cseinfoinit.jirasql(csechildsql)
+    data = []
+    for i in range(len(jira_result)):
+        resdata = {}
+        resdata['ecsid'] = jira_result[i].key
+        resdata['createdate']=jira_result[i].fields.created.split('T')[0]
+        resdata['creator'] = jira_result[i].fields.creator.displayName
+        resdata['assignee'] = jira_result[i].fields.assignee.displayName
+        resdata['version'] = jira_result[i].fields.versions[0].name
+        resdata['status'] = jira_result[i].fields.status.name
+        resdata['priority'] = jira_result[i].fields.customfield_11294[0].value
+        resdata['describe'] =  jira_result[i].fields.summary
+        data.append(resdata)
+    return data
 
 def getcsetotals():
     tbcse = TbCse.objects.all()
@@ -211,9 +238,33 @@ def updatecsetotals():
                           version=data['version'], maintenancedate=data['maintenancedate'],
                           environmenttype=data['environmenttype'])
             tbcse.save()
-
     result = 'ok'
     return result
+
+
+def selectcse(cseid='', csename='', customername=''):
+
+    if cseid:
+        cseinfo = TbCse.objects.filter(cseid__icontains=cseid)
+        json_data = serializers.serialize('json', cseinfo)
+
+        resdata = json.loads(json_data)
+        return resdata
+    elif csename:
+        cseinfo = TbCse.objects.filter(csename__icontains=csename)
+        json_data = serializers.serialize('json', cseinfo)
+        print(json.loads(json_data))
+        resdata = json.loads(json_data)
+        return resdata
+    elif customername:
+        cseinfo = TbCse.objects.filter(customername__icontains=customername)
+        json_data = serializers.serialize('json', cseinfo)
+        print(json.loads(json_data))
+        resdata = json.loads(json_data)
+        return resdata
+
+
+
 
 def csemonth(csekey):
     data = csechildresult(csekey)
@@ -320,13 +371,37 @@ class UserCaseView(APIView):
         userid = request.query_params.get('userid')
         data = usercaseresult(userid)
         return Response(data)
+    # def post(self,request):
+    #     esdeskid = request.data.get('esdeskid')
+    #     timespent = request.data.get('timespent')
+    #     result = updateusertimespent(self,esdeskid,timespent)
+    #     print(result)
+    #     return Response(result)
+class SelectCseView(APIView):
+    def get(self, request):
+        cseid = request.query_params.get('cseid')
+        csename = request.query_params.get('csename')
+        customername= request.query_params.get('customername')
+        data = selectcse(cseid, csename, customername)
+        return Response(data)
     def post(self,request):
-        esdeskid = request.data.get('esdeskid')
-        timespent = request.data.get('timespent')
-        result = updateusertimespent(self,esdeskid,timespent)
-        print(result)
-        return Response(result)
+        cseid = request.data.get('cseid')
+        csename = request.data.get('csename')
+        customername = request.data.get('customername')
+        data = selectcse(cseid, csename, customername)
+        return Response(data)
 
+class EcsByMonthView(APIView):
+    def get(self, request):
+        # userid = request.query_params.get('userid')
+        data = ecsbymonthresult()
+        return Response(data)
+    # def post(self,request):
+    #     esdeskid = request.data.get('esdeskid')
+    #     timespent = request.data.get('timespent')
+    #     result = updateusertimespent(self,esdeskid,timespent)
+    #     print(result)
+    #     return Response(result)
 
 from .tempofilltime import FillTime
 
@@ -345,8 +420,9 @@ class FilltempoView(APIView):
         #将填写得工时时间
         tompetime = request.data.get('tompetime'),
         #是否自动填写工时
+        filldatetime = request.data.get('filldatetime')
         is_autofill = request.data.get('is_autofill'),
-        result = FillTime(Authorization[0], tompetime[0], esdeskid, workerId[0], is_autofill[0])
-        return Response(result.reason)
+        result = FillTime(Authorization[0], tompetime[0], esdeskid, workerId[0], filldatetime, is_autofill[0])
+        return Response(result)
 
 
