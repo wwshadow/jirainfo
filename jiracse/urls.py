@@ -18,5 +18,6 @@ urlpatterns = [
     path('filltompe/', views.FilltempoView.as_view()),
     path('ecsbymonth', views.EcsByMonthView.as_view()),
     path('selectcse/', views.SelectCseView.as_view()),
+    path('ecsbymonthpage', views.EcsByMonthPageView.as_view()),
 
 ]

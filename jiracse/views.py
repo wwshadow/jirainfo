@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 # Create your views here.
+from django.core.paginator import Paginator
 from jira import JIRA
 from rest_framework import serializers
 from rest_framework.response import Response
@@ -161,7 +162,35 @@ def ecsbymonthresult():
         :version 版本
         :status 状态
         assignee 经办人
-priority: 优先级
+        priority: 优先级
+    :return:return ecs by this month
+    """
+    csechildsql = 'project in ("EasyStack Customer Support") AND createdDate  >= endOfMonth(-1)'
+    jira_result = cseinfoinit.jirasql(csechildsql)
+    data = []
+    for i in range(len(jira_result)):
+        resdata = {}
+        resdata['ecsid'] = jira_result[i].key
+        resdata['createdate']=jira_result[i].fields.created.split('T')[0]
+        resdata['creator'] = jira_result[i].fields.creator.displayName
+        resdata['assignee'] = jira_result[i].fields.assignee.displayName
+        resdata['version'] = jira_result[i].fields.versions[0].name
+        resdata['status'] = jira_result[i].fields.status.name
+        resdata['priority'] = jira_result[i].fields.customfield_11294[0].value
+        resdata['describe'] =  jira_result[i].fields.summary
+        data.append(resdata)
+    return data
+def ecsbymonthpageresult():
+    """
+    分页改造
+    :param :ecsid
+        :createdate
+        :describe 摘要
+        :creater 创建者
+        :version 版本
+        :status 状态
+        assignee 经办人
+        priority: 优先级
     :return:return ecs by this month
     """
     csechildsql = 'project in ("EasyStack Customer Support") AND createdDate  >= endOfMonth(-1)'
@@ -402,6 +431,31 @@ class EcsByMonthView(APIView):
     #     result = updateusertimespent(self,esdeskid,timespent)
     #     print(result)
     #     return Response(result)
+class EcsByMonthPageView(APIView):
+    """
+    分页改造
+    """
+    def get(self, request):
+        # 从路由当中获取当前页的页码和每页显示数量
+        current_page = request.query_params.get('currentPage')
+        page_size = request.query_params.get('pageSize')
+        #获取所有数据
+        data = ecsbymonthresult()
+        # 实例化分页器
+        paginotor = Paginator(data, page_size)
+        # 获取当前页的数据
+        pagdata = paginotor.page(current_page)
+        # 序列化
+        # data_serializer = serializers.serialize('json',pagdata)
+        resdata = {
+            'data': list(pagdata),  # 当前的数据
+            # 'data': data_serializer.data,  # 当前的数据
+            'page_list': [i for i in paginotor.page_range],  # 分页的页码列表
+            'page_sum': paginotor.num_pages,  # 总页数
+            # 'total': data.count()  # 总共有多少条内容
+            'total': len(data)  # 总共有多少条内容
+        }
+        return Response(resdata)
 
 from .tempofilltime import FillTime
 
