@@ -70,6 +70,7 @@ def FillTime(Authorization,tompetime='',esdeskid='',workerId='',filldatetime='',
                     # hours = data.get('billableSeconds')
                     if result.status_code == 400:
                         #自动需要对时间进行拼接
+                        #可以不拼接了
                         time2 = createtime.replace("T", " ")
                         time3 = createtime.split('.', 2)[1]
                         times = datetime.datetime.strptime(time2, "%Y-%m-%d %H:%M:%S." + time3)
@@ -147,8 +148,8 @@ def FillTime(Authorization,tompetime='',esdeskid='',workerId='',filldatetime='',
 
 if __name__ == '__main__':
     tompetime = '70'
-    esdeskid = 'ECSDESK-19381'
-    workerId = '5f812189287870006a5c85b4'
+    esdeskid = ''
+    workerId = ''
     Authorization = "xxx"
     filldatatime = '2022-06-11'
     is_autofill = False
