@@ -12,11 +12,11 @@ class TbCse(models.Model):
     cseid = models.CharField(max_length=100)
     csename = models.CharField(max_length=1000)
     fullname = models.CharField(max_length=1000)
-    customername = models.CharField(max_length=1000, blank=True, null=True)
+    customername = models.CharField(max_length=1000)
     csestatus = models.CharField(max_length=100)
-    projectname = models.CharField(max_length=1000, blank=True, null=True)
+    projectname = models.CharField(max_length=1000)
     version = models.CharField(max_length=10)
-    maintenancedate = models.CharField(max_length=100, blank=True, null=True)
+    maintenancedate = models.CharField(max_length=100)
     environmenttype = models.CharField(max_length=100)
 
     class Meta:
@@ -37,17 +37,15 @@ class TbEsdesk(models.Model):
         # managed = False
         db_table = 'tb_esdesk'
 
-
 class TbJirauser(models.Model):
-    jiraemail = models.CharField(max_length=50, blank=True, null=True)
-    jiraid = models.CharField(max_length=50, blank=True, null=True)
-    jirakey = models.CharField(max_length=50, blank=True, null=True)
-    jiraname = models.CharField(max_length=50, blank=True, null=True)
-    sessiontoken = models.CharField(max_length=200, blank=True, null=True)
-    jiratotptoken = models.CharField(max_length=1000, blank=True, null=True)
-    tempotoken = models.CharField(max_length=200, blank=True, null=True)
-    projectname = models.CharField(max_length=50, blank=True, null=True)
-    groups = models.CharField(max_length=50, blank=True, null=True)
+    jiraemail = models.CharField(max_length=50)
+    jiraid = models.CharField(max_length=50)
+    jirakey = models.CharField(max_length=50)
+    name = models.CharField(max_length=100)
+    sessiontoken = models.CharField(max_length=1000)
+    jiratotptoken = models.CharField(max_length=1000)
+    tompetoken = models.CharField(max_length=1000)
+
     class Meta:
-        # managed = False
+        # managed = True
         db_table = 'tb_jirauser'

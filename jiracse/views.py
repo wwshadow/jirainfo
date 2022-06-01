@@ -3,19 +3,24 @@ import json
 import os
 # Create your views here.
 from django.core.paginator import Paginator
+from django.http import JsonResponse
 from jira import JIRA
 from rest_framework import serializers
 from rest_framework.response import Response
 import yaml
 import sys
 from rest_framework.views import APIView
+
+from .serializer import TbjirauserSerializer
+
 sys.setrecursionlimit(9000000)
 import requests
 requests.packages.urllib3.disable_warnings()
-from  .models import TbCse,TbEsdesk
+from .models import TbCse, TbEsdesk, TbJirauser
 from django.core import serializers
 
 
+filepath = os.path.join(os.path.dirname(__file__), 'config.yaml')
 class CseInfo:
     def __init__(self):
         pass
@@ -31,15 +36,14 @@ class CseInfo:
         jira 账户登录
         :return:
         """
-        module_dir = os.path.dirname(__file__)
-        # print(module_dir)
-        filepath = os.path.join(module_dir, 'config.yaml')
+
         jirafile = CseInfo.readconfig(filepath)
         options = {
             'server': jirafile['jira']['url'],
             'verify': False
         }
-        jira = JIRA(options, basic_auth=(jirafile['jira']['name'], jirafile['jira']['jiarkey']))
+
+        jira = JIRA(options, basic_auth=(jirafile['jira']['name'], jirafile['jira']['jirakey']))
         return jira
     @classmethod
     def jirasql(cls,sqlstr):
@@ -57,6 +61,154 @@ class CseInfo:
 
 
 cseinfoinit = CseInfo()
+
+def localjirauser(jiraname,jirakey):
+    jirafile = CseInfo.readconfig(filepath)
+    options = {
+        'server': jirafile['jira']['url'],
+        'verify': False
+    }
+    jira = JIRA(options, basic_auth=(jiraname, jirakey))
+    return jira
+
+def jirausrresult(jiraname,jirakey):
+
+    msg = "ok"
+
+    try:
+         globaljirauser =localjirauser(jiraname,jirakey)
+
+         jirauser = TbJirauser.objects.filter(jiraname=jiraname)
+         json_data = serializers.serialize('json', jirauser)
+         ss=json.loads(json_data)
+         print(ss[0]['fields']['jiraid'])
+    except Exception as e:
+        msg = "err"
+        return msg
+    if globaljirauser:
+
+        return ss[0]['fields']['jiraid']
+
+
+# def updatejirausr(jiraname,jirakey):
+#     data = {'jiraname': jiraname,
+#         'jirakey': jirakey}
+#     getuser = TbJirauser.objects.filter(jiraname=data['jiraname'])
+#     # getuser = TbjirauserSerializer(data=data['jiraname'])
+#     if getuser:
+#         globaljirauser = cseinfoinit.jiralogin(data)
+#     else:
+#         objSr = TbjirauserSerializer(data=data)
+#         objSr.is_valid()
+#         objSr.save()
+#         globaljirauser = cseinfoinit.jiralogin(data)
+#
+#     msg = "ok"
+#     try:
+#         result = cseinfoinit.jiralogin(data)
+#     except:
+#         msg = "err"
+#         return msg
+#     if result:
+#         return msg
+def totploginresult(jiraemail,password):
+    header = {
+        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36",
+    "Content-Type": "application/json;charset=UTF-8",
+    }
+    postData={
+        "username": jiraemail,
+        "password": password,
+    }
+    url = 'http://easytotp.easystack.io/api/login/'
+
+    response = requests.post(url=url, headers=header, json=postData, allow_redirects=True)
+    if response.status_code == 200:
+        if json.loads(response.text)['code'] == 0:
+             token = json.loads(response.text)['data']['token']
+             return token
+        else:
+            msg = json.loads(response.text)['message']
+            return msg
+
+def totptokenresult(jiraemail,totppwd,*args):
+    # totp_type =roller
+    # customer,project,version,cse,totp_version,issue,auditor,reason,totp_type
+    header = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36",
+        "Content-Type": "application/json;charset=UTF-8",
+    }
+
+    logindata={
+        "username": jiraemail,
+        "password": totppwd,
+    }
+
+    url = 'http://easytotp.easystack.io/api/login/'
+    response = requests.post(url=url, headers=header, json=logindata, allow_redirects=True)
+    if response.status_code == 200:
+        if json.loads(response.text)['code'] == 0:
+            token = json.loads(response.text)['data']['token']
+            cookies = token
+            newdata = {
+                'jiratotptoken': cookies
+            }
+            jiraemailsql = TbJirauser.objects.filter(jiraemail=jiraemail).first()
+            sqlcookie = TbjirauserSerializer(jiraemailsql, data=newdata, partial=True)
+            sqlcookie.is_valid()
+            sqlcookie.save()
+            return cookies
+        else:
+            msg = json.loads(response.text)['message']
+            return msg
+
+    url2 = 'http://easytotp.easystack.io/api/totp/totp/'
+    # cookies = jiradata['jiracookie']
+    # response = requests.post(url=url2, json=postData ,headers=header, cookies=cookies)
+    # #再次申请
+    # #验证成功结果
+    # if json.loads(response.text)['code'] == 0:
+    #     msg = json.loads(response.text)['data']
+    #
+    # else:
+    #     msg = json.loads(response.text)['message']
+    # return msg
+
+def totpresult(jiraemail,Dynamicpwd,datas,totp_type,totp_version):
+    datas["totp_version"] = totp_version
+    datas["totp_type"] = totp_type
+    header = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36",
+        "Content-Type": "application/json;charset=UTF-8",
+    }
+    url = 'http://easytotp.easystack.io/api/totp/totp/'
+
+    if Dynamicpwd:
+        cookies = totptokenresult(jiraemail, Dynamicpwd)
+        if cookies == "LDAP认证密码错误.":
+            return cookies
+        # else:
+        #     pass
+            # response = requests.post(url=url, json=postData, headers=header, cookies=cookies)
+    else:
+        # pass
+        json_data = TbJirauser.objects.filter(jiraemail=jiraemail)
+        serializerscookies = serializers.serialize('json', json_data, fields=('jiratotptoken'))
+        cookies = json.loads(serializerscookies)[0]['fields']['jiratotptoken']
+        # print(cookies)
+
+    recookies= {"jwtToken":cookies}
+    # 再次申请
+    # 验证成功结果
+
+    response = requests.post(url=url, json=datas, headers=header, cookies=recookies)
+    if json.loads(response.text)['code'] == 0:
+
+        msg = json.loads(response.text)['data']
+    else:
+        msg = json.loads(response.text)['message']
+    return msg
+
 def cseresult(csekey):
     """
     根据sql 结果返回基础信息
@@ -76,15 +228,52 @@ def cseresult(csekey):
     }
     return cse
 
+def esdeskresult(esdeskid):
+    """
+    根据sql 结果返回基础信息
+    :return: 返回的是与当前cse key 相关的子case 信息
+            返回当前cse 本身的基础信息：
+                客户名称：
+                项目名称：
+                维保：
+    """
+    # esdeskkey='ECSDESK-19814'
+    jira = cseinfoinit.jiralogin()
+    esdesk = jira.issue(esdeskid)
+    cseid = esdesk.fields.customfield_10007
+    cseinfo = cseresult(cseid)
+    projectname =cseinfo['projectname']
+    customername = cseinfo['customername']
+    esdeskinfo = {
+        'cseid': cseid,
+        'project': projectname,
+        'customer': customername,
+        'reason': esdesk.fields.summary,
+        'auditor': esdesk.fields.customfield_10400.displayName
+    }
+    return esdeskinfo
 
+def userresult(jiraid):
+    """
+    根据sql 结果返回基础信息
+    :return: 返回的是与当前cse key 相关的子case 信息
+            返回当前cse 本身的基础信息：
+                客户名称：
+                项目名称：
+                维保：
+    """
+    resultdata = TbJirauser.objects.filter(jiraid=jiraid)
+    json_data = serializers.serialize('json', resultdata, fields=('jiraname','jiraemail','projectname','groups'))
+    jirauserinfo = json.loads(json_data)
+    # print(jirauserinfo[0]['fields'])
+    return jirauserinfo[0]['fields']
 
 def csetyperesult(csekey):
     """
     :return:返回改cse 下case 的统计情况
     """
     csechildtypesql = '"Epic Link"  in (%s)' % (csekey)
-    # orderby_create_sql = '"Epic Link"  in (%s) ORDER BY createdDate' % (csekey)
-    # issuetype_orderby_create_sql = '"Epic Link"  in (%S) AND issuetype = %s ORDER BY createdDate' % (csekey)
+
     #这个地方还可以在优化，自动获取所有类型
     issuetype = ['Change', 'Incident', 'Problem', 'Service request']
     case_type_num = {}
@@ -122,23 +311,6 @@ def usercaseresult(userid):
         data.append(resdata)
     return data
 
-# def updateusertimespent(self,esdeskid,timespent):
-#     # esdeskid = data['esdeskid']
-#     # timespent = data['timespent']
-#     """
-#
-#     :param self:
-#     :param esdeskid:
-#     :param timespent:
-#     :return: 暂时不行 jira 不支持直接更新这个字段
-#     """
-#     jira = cseinfoinit.jiralogin()
-#     esdesk = jira.issue(esdeskid, fields='timespent,summary')
-#     print(esdesk.fields.timespent)
-#     esdesk.update(fields={'timespent': 10})
-#     print(esdesk.fields.timespent)
-#     return
-
 def csechildresult(csekey):
     csechildsql = '"Epic Link"  in (%s)' % (csekey)
     jira_result = cseinfoinit.jirasql(csechildsql)
@@ -154,7 +326,6 @@ def csechildresult(csekey):
     return data
 def ecsbymonthresult():
     """
-
     :param :ecsid
         :createdate
         :describe 摘要
@@ -180,6 +351,7 @@ def ecsbymonthresult():
         resdata['describe'] =  jira_result[i].fields.summary
         data.append(resdata)
     return data
+
 def ecsbymonthpageresult():
     """
     分页改造
@@ -346,7 +518,7 @@ def csemonth(csekey):
 class GetCsetotalView(APIView):
     def get(self, equest):
         '''列表视图：查询基础信息'''
-        # pks= request.query_params.get('csekey')
+
         csetotal = getcsetotals()
 
         return Response(csetotal)
@@ -354,7 +526,7 @@ class GetCsetotalView(APIView):
 class UpdateCsetotalView(APIView):
     def get(self, equest):
         '''列表视图：查询基础信息'''
-        # pks= request.query_params.get('csekey')
+
         csetotal = updatecsetotals()
         return Response(csetotal)
 
@@ -364,8 +536,14 @@ class CseDescribeView(APIView):
         pks= request.query_params.get('csekey')
         cseinfo = cseresult(pks)
         return Response(cseinfo)
-        # serializer = BookModelSerializer(instance=book,many=True)
-        # return Response(serializer.data)
+
+
+class EsdeskView(APIView):
+    def get(self,request):
+        '''列表视图：查询基础信息'''
+        esdeskid = request.query_params.get('esdeskid')
+        esdeskinfo = esdeskresult(esdeskid)
+        return Response(esdeskinfo)
 
 class CseTypeView(APIView):
     def get(self, request):
@@ -400,12 +578,7 @@ class UserCaseView(APIView):
         userid = request.query_params.get('userid')
         data = usercaseresult(userid)
         return Response(data)
-    # def post(self,request):
-    #     esdeskid = request.data.get('esdeskid')
-    #     timespent = request.data.get('timespent')
-    #     result = updateusertimespent(self,esdeskid,timespent)
-    #     print(result)
-    #     return Response(result)
+
 class SelectCseView(APIView):
     def get(self, request):
         cseid = request.query_params.get('cseid')
@@ -425,20 +598,15 @@ class EcsByMonthView(APIView):
         # userid = request.query_params.get('userid')
         data = ecsbymonthresult()
         return Response(data)
-    # def post(self,request):
-    #     esdeskid = request.data.get('esdeskid')
-    #     timespent = request.data.get('timespent')
-    #     result = updateusertimespent(self,esdeskid,timespent)
-    #     print(result)
-    #     return Response(result)
+
 class EcsByMonthPageView(APIView):
     """
     分页改造
     """
     def get(self, request):
         # 从路由当中获取当前页的页码和每页显示数量
-        current_page = request.query_params.get('currentPage')
-        page_size = request.query_params.get('pageSize')
+        current_page = request.query_params.get('currentPage',1)
+        page_size = request.query_params.get('pageSize',3)
         #获取所有数据
         data = ecsbymonthresult()
         # 实例化分页器
@@ -479,4 +647,28 @@ class FilltempoView(APIView):
         result = FillTime(Authorization[0], tompetime[0], esdeskid, workerId[0], filldatetime, is_autofill[0])
         return Response(result)
 
+class JiraUserloginView(APIView):
+    def get(self, request):
+        jiraid = request.query_params.get('jiraid')
+        data = userresult(jiraid)
+        return JsonResponse(data, safe=False)
+    def post(self, request):
+        jiraname = request.data.get('jiraemail')
+        jirakey = request.data.get('jirakey')
+        data = jirausrresult(jiraname, jirakey)
+        return JsonResponse(data, safe=False)
 
+class TotpView(APIView):
+    def get(self, request):
+        csekey = request.query_params.get('csekey')
+        data = csechildresult(csekey)
+        return Response(data)
+    def post(self,request):
+
+        jiraemail = request.data.get('jiraemail')
+        totp_type = request.data.get('totp_type')
+        totp_version = request.data.get('totp_version')
+        Dynamicpwd = request.data.get('Dynamicpwd')
+        datas = request.data.get('datas')
+        data = totpresult(jiraemail,Dynamicpwd,datas,totp_type,totp_version)
+        return Response(data)

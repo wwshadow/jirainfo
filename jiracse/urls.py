@@ -19,5 +19,9 @@ urlpatterns = [
     path('ecsbymonth', views.EcsByMonthView.as_view()),
     path('selectcse/', views.SelectCseView.as_view()),
     path('ecsbymonthpage', views.EcsByMonthPageView.as_view()),
+    path('jirauser', views.JiraUserloginView.as_view()),
+    path('estotp/', views.TotpView.as_view()),
+    path('esdesk/', views.EsdeskView.as_view()),
+
 
 ]
