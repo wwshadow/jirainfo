@@ -128,8 +128,8 @@ def FillTime(Authorization,tompetime='',esdeskid='',workerId='',filldatetime='',
             result = requests.post("https://app.tempo.io/rest/tempo-timesheets/4/worklogs/", headers=headers,
                                    data=json.dumps(data))
             if result.status_code == 200:
-                print("完成")
-                print(result.text)
+                # print("完成")
+                # print(result.text)
                 return result.status_code
 
             if result.status_code == 400:

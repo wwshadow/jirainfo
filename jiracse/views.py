@@ -344,7 +344,10 @@ def ecsbymonthresult():
         resdata['ecsid'] = jira_result[i].key
         resdata['createdate']=jira_result[i].fields.created.split('T')[0]
         resdata['creator'] = jira_result[i].fields.creator.displayName
-        resdata['assignee'] = jira_result[i].fields.assignee.displayName
+        try:
+            resdata['assignee'] = jira_result[i].fields.assignee.displayName
+        except:
+            resdata['assignee'] = None
         resdata['version'] = jira_result[i].fields.versions[0].name
         resdata['status'] = jira_result[i].fields.status.name
         resdata['priority'] = jira_result[i].fields.customfield_11294[0].value
@@ -630,7 +633,7 @@ from .tempofilltime import FillTime
 class FilltempoView(APIView):
     def get(self, request):
         userid = request.query_params.get('userid')
-        print(userid)
+        # print(userid)
         data = usercaseresult(userid)
         return Response(data)
     def post(self,request):
